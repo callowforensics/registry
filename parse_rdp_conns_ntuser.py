@@ -2,6 +2,7 @@
 from Registry import Registry
 import os
 import sys
+from collections import Counter
 
 if __name__ == "__main__":
     # Check that the user has enter enough args.
@@ -67,35 +68,38 @@ if __name__ == "__main__":
                 except Exception:
                     pass
 
-    # Get a unique list of RDP conns.
-    all_server_rdp_conns = sorted(list(set(data[user]["server"][i][0]
-                                           for user in data for i in range(len(data[user]["server"])))))
-    all_default_rdp_conns = sorted(list(set(data[user]["default"][i]
-                                            for user in data for i in range(len(data[user]["default"])))))
-    all_rdp_conns = sorted(list(set(all_default_rdp_conns + all_server_rdp_conns)))
+    # Get a unique list of RDP conns plus a frequency analysis of them.
+    all_server_rdp_conns = [data[user]["server"][i][0].lower() for user in data for i in range(len(data[user]["server"]))]
+    all_default_rdp_conns = [data[user]["default"][i].lower() for user in data for i in range(len(data[user]["default"]))]
+    all_rdp_conns = dict(Counter(list(all_default_rdp_conns + all_server_rdp_conns)))
 
     # Write the results.
     with open(os.path.join(out_path, "{}_rdp_analysis.txt".format(system_in_focus)), "w") as f:
-        summary_header = "The following {} RDP connections have been made from the system: \"{}\":\n"\
+        summary_header = "The following {} systems have been RDPd to from the system " \
+                         "\"{}\" (frequency of key occurrence in brackets)\n"\
             .format(len(all_rdp_conns), system_in_focus)
-
+        f.write("/" * len(summary_header.strip()) + "\n")
         f.write(summary_header)
-        f.write("#" * len(summary_header.strip()) + "\n\n")
+        f.write("/" * len(summary_header.strip()) + "\n\n")
 
-        for index, system in enumerate(all_rdp_conns, 1):
-            f.write(str(index) + ") " + system + "\n")
+        for system, frequency in sorted(dict.items(all_rdp_conns)):
+            f.write(system + " ({})".format(str(frequency)) + "\n")
 
-        summary_header_2 = "\nBreakdown of RDP connections per user:\n"
+        summary_header_2 = "Breakdown of RDP connections per user\n".upper()
+        f.write("\n" + "/" * len(summary_header_2) + "\n")
         f.write(summary_header_2)
-        f.write("#" * len(summary_header_2.strip()) + "\n\n")
+        f.write("/" * len(summary_header_2) + "\n\n")
 
-        for user in data:
+        for user in sorted(data):
             if data[user]["server"] or data[user]["default"]:
                 f.write("User \"{}\":\n\n".format(user))
 
                 if data[user]["server"]:
-                    f.write("Entries found within \"Software\Microsoft\Terminal Server Client\Servers\":\n\n")
-                    for index, system in enumerate(sorted(data[user]["server"], 1)):
+                    focus = data[user]["server"]
+                    f.write("{} system(s) found within the key "
+                            "\"Software\Microsoft\Terminal Server Client\Servers\":\n\n"
+                            .format(len(focus)))
+                    for index, system in enumerate(sorted(focus), 1):
                         host, hint, time = system
                         f.write("{})".format(str(index)))
                         f.write("\nHost: {}".format(host))
@@ -103,8 +107,13 @@ if __name__ == "__main__":
                         f.write("\nPassword hint: {}\n".format(hint))
 
                 if data[user]["default"]:
-                    f.write("Entries found within \"Software\Microsoft\Terminal Server Client\Default\":\n\n")
-                    for index, system in enumerate(sorted(data[user]["default"]), 1):
+                    focus = sorted(list(set(data[user]["default"])))
+                    if data[user]["server"]:
+                        f.write("\n")
+                    f.write("{} system(s) found within the key "
+                            "\"Software\Microsoft\Terminal Server Client\Default\":\n\n"
+                            .format(len(focus)))
+                    for index, system in enumerate(focus, 1):
                         f.write(str(index) + ") " + system + "\n")
 
                 f.write("-" * 100 + "\n")
