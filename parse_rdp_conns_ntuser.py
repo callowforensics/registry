@@ -75,7 +75,7 @@ if __name__ == "__main__":
     all_rdp_conns = sorted(list(set(all_default_rdp_conns + all_server_rdp_conns)))
 
     # Write the results.
-    with open(os.path.join(out_path, "results.txt"), "w") as f:
+    with open(os.path.join(out_path, "{}_rdp_analysis.txt".format(system_in_focus)), "w") as f:
         summary_header = "The following {} RDP connections have been made from the system: \"{}\":\n"\
             .format(len(all_rdp_conns), system_in_focus)
 
